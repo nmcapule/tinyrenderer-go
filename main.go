@@ -1,17 +1,68 @@
 package main
 
 import (
+	"bufio"
 	"github.com/ftrvxmtrx/tga"
 	"image"
 	"image/color"
 	"log"
 	"math"
 	"os"
+	"strconv"
+	"strings"
 )
 
 const (
 	ImageOutFile = "output.tga"
 )
+
+type Point struct {
+	X, Y, Z float64
+}
+
+type FaceVertexIndices struct {
+	A, B, C int
+}
+
+type Model struct {
+	Vertices []Point
+	Faces    []FaceVertexIndices
+}
+
+func (m *Model) ReadObj(name string) {
+	file, err := os.Open(name)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+    // Add a single point to make m.Vertices one-indexed
+    m.Vertices = []Point{Point{}}
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		s := strings.Split(line, " ")
+		if s[0] == "v" {
+			p := Point{}
+			p.X, _ = strconv.ParseFloat(s[1], 64)
+			p.Y, _ = strconv.ParseFloat(s[2], 64)
+			p.Z, _ = strconv.ParseFloat(s[3], 64)
+
+			m.Vertices = append(m.Vertices, p)
+		} else if s[0] == "f" {
+			f := FaceVertexIndices{}
+			as := strings.Split(s[1], "/")
+			f.A, _ = strconv.Atoi(as[0])
+			bs := strings.Split(s[2], "/")
+			f.B, _ = strconv.Atoi(bs[0])
+			cs := strings.Split(s[3], "/")
+			f.C, _ = strconv.Atoi(cs[0])
+
+			m.Faces = append(m.Faces, f)
+		}
+	}
+}
 
 func ImageFlipVertical(img *image.RGBA) {
 	h := img.Rect.Dy()
@@ -67,6 +118,9 @@ func main() {
 	defer file.Close()
 
 	tga.Encode(file, img)
+
+	model := Model{}
+	model.ReadObj("obj/african_head.obj")
 
 	log.Print("Finish!")
 }
