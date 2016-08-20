@@ -78,13 +78,14 @@ func ImageFlipVertical(img *image.RGBA) {
 
 func ImageDrawLine(img *image.RGBA, x0, y0, x1, y1 float64, c color.RGBA) {
 	it, dx, dy := 0., 0., 0.
+
 	if math.Abs(x1-x0) > math.Abs(y1-y0) {
 		it = x1 - x0
 		dx = it / math.Abs(it)
-		dy = (y1 - y0) / it
+		dy = (y1 - y0) / math.Abs(it)
 	} else {
 		it = y1 - y0
-		dx = (x1 - x0) / it
+		dx = (x1 - x0) / math.Abs(it)
 		dy = it / math.Abs(it)
 	}
 
@@ -95,21 +96,44 @@ func ImageDrawLine(img *image.RGBA, x0, y0, x1, y1 float64, c color.RGBA) {
 	}
 }
 
-func main() {
-	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+func ImageRenderWireframeModel(img *image.RGBA, m *Model) {
 	RGBAWhite := color.RGBA{0xff, 0xff, 0xff, 0xff}
+    width := img.Rect.Dx()
+    height := img.Rect.Dy()
+
+    for f := range m.Faces {
+        a := []Point{
+            m.Vertices[m.Faces[f].A],
+            m.Vertices[m.Faces[f].B],
+            m.Vertices[m.Faces[f].C],
+        }
+        for i := 0; i < 3; i++ {
+            v0, v1 := a[i], a[(i + 1) % 3]
+            x0 := v0.X*float64(width/2) + float64(img.Rect.Min.X+width/2)
+            y0 := v0.Y*float64(height/2) + float64(img.Rect.Min.Y+height/2)
+            x1 := v1.X*float64(width/2) + float64(img.Rect.Min.X+width/2)
+            y1 := v1.Y*float64(height/2) + float64(img.Rect.Min.Y+height/2)
+            ImageDrawLine(img, x0, y0, x1, y1, RGBAWhite)
+        }
+    }
+}
+
+func main() {
+	img := image.NewRGBA(image.Rect(0, 0, 800, 800))
+	RGBABlack := color.RGBA{0x00, 0x00, 0x00, 0xff}
 	RGBARed := color.RGBA{0xff, 0x88, 0x88, 0xff}
 
 	for y := img.Rect.Min.Y; y < img.Rect.Max.Y; y++ {
 		for x := img.Rect.Min.X; x < img.Rect.Max.X; x++ {
-			img.Set(x, y, RGBAWhite)
+			img.Set(x, y, RGBABlack)
 		}
 	}
 	img.Set(30, 40, RGBARed)
 
+	model := Model{}
+	model.ReadObj("obj/african_head.obj")
+    ImageRenderWireframeModel(img, &model)
 	ImageFlipVertical(img)
-	ImageDrawLine(img, 0., 0., 80., 100., RGBARed)
-	ImageDrawLine(img, 0., 0., 100., 80., RGBARed)
 
 	file, err := os.Create(ImageOutFile)
 	if err != nil {
@@ -118,9 +142,6 @@ func main() {
 	defer file.Close()
 
 	tga.Encode(file, img)
-
-	model := Model{}
-	model.ReadObj("obj/african_head.obj")
 
 	log.Print("Finish!")
 }
