@@ -5,7 +5,12 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"math"
 	"os"
+)
+
+const (
+	ImageOutFile = "output.tga"
 )
 
 func ImageFlipVertical(img *image.RGBA) {
@@ -17,6 +22,25 @@ func ImageFlipVertical(img *image.RGBA) {
 			img.Set(x, img.Rect.Max.Y-y-1, img.At(x, y))
 			img.Set(x, y, tmp)
 		}
+	}
+}
+
+func ImageDrawLine(img *image.RGBA, x0, y0, x1, y1 float64, c color.RGBA) {
+	it, dx, dy := 0., 0., 0.
+	if math.Abs(x1-x0) > math.Abs(y1-y0) {
+		it = x1 - x0
+		dx = it / math.Abs(it)
+		dy = (y1 - y0) / it
+	} else {
+		it = y1 - y0
+		dx = (x1 - x0) / it
+		dy = it / math.Abs(it)
+	}
+
+	for i := 0.; i < math.Abs(it); i++ {
+		x := int(x0 + i*dx)
+		y := int(y0 + i*dy)
+		img.Set(x, y, c)
 	}
 }
 
@@ -33,8 +57,10 @@ func main() {
 	img.Set(30, 40, RGBARed)
 
 	ImageFlipVertical(img)
+	ImageDrawLine(img, 0., 0., 80., 100., RGBARed)
+	ImageDrawLine(img, 0., 0., 100., 80., RGBARed)
 
-	file, err := os.Create("simple.tga")
+	file, err := os.Create(ImageOutFile)
 	if err != nil {
 		log.Fatal("err")
 	}
